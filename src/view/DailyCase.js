@@ -3,7 +3,7 @@ import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
 } from 'recharts' 
 import axios from 'axios'
-import { Checkbox, Layout, Select, Input, Button, Tooltip as AntdToolTip, List} from 'antd'
+import { Checkbox, Layout, Select, Input, Button, Tooltip as AntdToolTip, List, Spin} from 'antd'
 import { UserOutlined, SearchOutlined } from '@ant-design/icons';
 
 const {Content} = Layout
@@ -24,7 +24,7 @@ export default class DailyCaseView extends PureComponent {
           'DAILY_NEW_CASE': 'FALSE',
           'DEATH_CASE': 'FALSE'
         },
-        querying_territory: [],
+        querying_territory: {},
         selected_territory: {},
         selected_capita: '1000',
         provided_countries: [],
@@ -32,7 +32,8 @@ export default class DailyCaseView extends PureComponent {
         provided_counties: [],
         displayed_countries: {},
         displayed_states: {},
-        displayed_counties: {}
+        displayed_counties: {},
+        loading_chart_data: false
     }
 
     REMOTE_HOST_URL = 'http://localhost:8090/api'
@@ -91,13 +92,15 @@ export default class DailyCaseView extends PureComponent {
     }
 
     load_chart_data = () => {
+      this.setState({loading_chart_data: true})
       axios.get( this.REMOTE_HOST_URL + this.ANALYZE_EP, {
           params: this.get_analyze_params()
         })
       .then(res => {
+          this.setState({loading_chart_data: false})
           console.log(res)
           if (res.data.length > 0){
-            const chart_data = convert_res_to_chart_data(res.data)
+            const chart_data = this.convert_res_to_chart_data(res.data)
             console.log('Chart data ', chart_data)
             this.setState({ chart_data })
           } else {
@@ -107,7 +110,17 @@ export default class DailyCaseView extends PureComponent {
     }
 
     on_select_analyze_opt = (checked_values) =>{
+      console.log('Val is ', checked_values)
       let new_aso = this.state.selected_analyze_opt
+
+      this.setState({
+        selected_analyze_opt :{
+          'CAPITA_PERCENTAGE': 'FALSE',
+          'LATEST_ONLY': 'FALSE',
+          'DAILY_NEW_CASE': 'FALSE',
+          'DEATH_CASE': 'FALSE'
+        }
+      })
       for (let c of checked_values) {
         new_aso[c] = 'TRUE'
       }
@@ -115,6 +128,7 @@ export default class DailyCaseView extends PureComponent {
       this.setState({
         analyze_selected_options: new_aso
       })
+      this.load_chart_data()
     }
 
     on_select_country = (sel_country) => {
@@ -211,6 +225,31 @@ export default class DailyCaseView extends PureComponent {
 
     }
 
+    find_ter_name = (id) =>{
+      if (this.state.querying_territory['territory_id']) {
+        for (let i= 0; i < this.state.querying_territory['territory_id'].length; i++){
+          if (this.state.querying_territory['territory_id'][i] === id){
+            return this.state.querying_territory['name'][i]
+          }
+        }
+      }
+    }
+
+    convert_res_to_chart_data = (data) => {
+      let chart_data = []
+      const time_series = Object.keys(data[0]['case'])
+      for (let t of time_series){
+          let chart_data_temp_o = {}
+          chart_data_temp_o['name'] = t
+          for (let d of data){
+              chart_data_temp_o[d['territory_type'] + ' ' + this.find_ter_name(d['territory_id'])] = parseInt(d['case'][t])
+          }
+          chart_data.push(chart_data_temp_o)
+      }
+      console.log(chart_data)
+      return chart_data
+    }
+
     clear_selecter = () => {
       this.setState({
         selected_territory: {},
@@ -226,20 +265,37 @@ export default class DailyCaseView extends PureComponent {
       })
     }
 
-    data = [
-      {
-        title: 'Ant Design Title 1',
-      },
-      {
-        title: 'Ant Design Title 2',
-      },
-      {
-        title: 'Ant Design Title 3',
-      },
-      {
-        title: 'Ant Design Title 4',
-      },
-    ]
+    load_chart_ui = () => {
+      if (this.state.loading_chart_data) {
+        return (
+          <div>
+            <Spin tip="Loading chart data"/>
+          </div>
+        )
+      } else {
+        return (
+          <LineChart
+            width={1300}
+            height={800}
+            data={this.state.chart_data}
+            margin={{
+              top: 50, right: 50, left: 100, bottom: 20,
+            }}
+          >
+            <CartesianGrid strokeDasharray='3 3' />
+            <XAxis dataKey='name' />
+            <YAxis />
+            <Tooltip />
+            {
+              this.get_presentable_querrying_ter().map (ter => (
+                <Line type='monotone' dataKey={ter.territory_type+ " " + ter.name} stroke='#8884d8' activeDot={{ r: 8 }} />
+              ))
+            }
+            <Legend />
+          </LineChart>
+        )
+      }
+    }
 
   render() {
     return (
@@ -327,39 +383,9 @@ export default class DailyCaseView extends PureComponent {
             </AntdToolTip>
             <br/>
             <Checkbox.Group options={this.state.analyze_opt} onChange={this.on_select_analyze_opt} />
-            <LineChart
-              width={1300}
-              height={800}
-              data={this.state.chart_data}
-              margin={{
-                top: 50, right: 50, left: 100, bottom: 20,
-              }}
-            >
-              <CartesianGrid strokeDasharray='3 3' />
-              <XAxis dataKey='name' />
-              <YAxis />
-              <Tooltip />
-              <Legend />
-              <Line type='monotone' dataKey='5e94690a69fb6ab99410cabc' stroke='#8884d8' activeDot={{ r: 8 }} />
-              <Line type='monotone' dataKey='5e94690969fb6ab99410ca28' stroke='#82ca9d' />
-              <Line type='monotone' dataKey='5e94691d69fb6ab99410d213' stroke='#f5b342' />
-            </LineChart>
+            <br/>
+            {this.load_chart_ui()}
       </Content>
     ) 
   }
-}
-
-const convert_res_to_chart_data = (data) => {
-    let chart_data = []
-    const time_series = Object.keys(data[0]['case'])
-    for (let t of time_series){
-        let chart_data_temp_o = {}
-        chart_data_temp_o['name'] = t
-        for (let d of data){
-            chart_data_temp_o[d['territory_id']] = parseInt(d['case'][t])
-        }
-        chart_data.push(chart_data_temp_o)
-    }
-    console.log(chart_data)
-    return chart_data
 }
