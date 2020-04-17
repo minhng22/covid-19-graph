@@ -36,7 +36,7 @@ export default class DailyCaseView extends PureComponent {
         loading_chart_data: false
     }
 
-    REMOTE_HOST_URL = 'http://localhost:8090/api'
+    REMOTE_HOST_URL = 'https://covid19-tracking-api.herokuapp.com/api'
     ANALYZE_EP = '/case-analyze'
     COUNTRY = '/country'
     STATE = '/state'
