@@ -41,6 +41,8 @@ export default class DailyCaseView extends PureComponent {
     COUNTRY = '/country'
     STATE = '/state'
     COUNTY = '/county'
+    TER_PROPERTY = ['territory_id', 'territory_type', 'territory_capita']
+    TER_PROPERTY_UI = ['territory_id', 'territory_type', 'territory_capita']
 
     componentDidMount(){
       this.load_provided_countries()
@@ -58,10 +60,9 @@ export default class DailyCaseView extends PureComponent {
 
     get_analyze_params = () => {
       let p = this.state.selected_analyze_opt
-      p['territory_id'] = this.state.querying_territory ? this.state.querying_territory['territory_id']: []
-      p['territory_type'] = this.state.querying_territory? this.state.querying_territory['territory_type']: []
-      p['territory_capita'] = this.state.querying_territory? this.state.querying_territory['territory_capita']: []
-      
+      for (let tp of this.TER_PROPERTY) {
+        p[tp] = this.state.querying_territory ? this.state.querying_territory[tp]: []
+      }
       console.log('Analyze params ', p)
       return p
     }
@@ -70,22 +71,19 @@ export default class DailyCaseView extends PureComponent {
       let p = {}
       let pq = []
 
-      p['territory_id'] = this.state.querying_territory ? this.state.querying_territory['territory_id']: []
-      p['territory_type'] = this.state.querying_territory? this.state.querying_territory['territory_type']: []
-      p['territory_capita'] = this.state.querying_territory? this.state.querying_territory['territory_capita']: []
-      p['name'] = this.state.querying_territory? this.state.querying_territory['name']: []
+      for (let tp of this.TER_PROPERTY_UI) {
+        p[tp] = this.state.querying_territory ? this.state.querying_territory[tp]: []
+      }
 
       if (p['territory_id']) {
         for (let i= 0; i < p['territory_id'].length; i++){
-          pq.push({
-            'territory_id': p['territory_id'][i],
-            'territory_type': p['territory_type'][i],
-            'territory_capita': p['territory_capita'][i],
-            'name': p['name'][i]
-          })
+          let temp = {}
+          for (let tp of this.TER_PROPERTY_UI) {
+            temp[tp] = p[tp][i]
+          }
+          pq.push(temp)
         }
       }
-
       console.log('Presentable querrying ter: ', pq)
 
       return pq
