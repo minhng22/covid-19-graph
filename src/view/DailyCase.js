@@ -1,40 +1,67 @@
-import React, { PureComponent } from 'react' 
+import React, { PureComponent} from 'react' 
 import {
-  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
+  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
 } from 'recharts' 
 import axios from 'axios'
-import { Checkbox, Layout, Select, Input, Button, Tooltip as AntdToolTip, List, Spin} from 'antd'
-import { UserOutlined, SearchOutlined } from '@ant-design/icons';
+import { Checkbox, Layout, Select, Input, Button, Tooltip as AntdToolTip, List, Spin, Row, Col} from 'antd'
+import { UserOutlined, SearchOutlined, DeleteFilled } from '@ant-design/icons';
 
 const {Content} = Layout
 const {Option} = Select
 
 export default class DailyCaseView extends PureComponent {
-    state = {
-        chart_data: [],
-        analyze_opt : [
-          { label: 'Capita Percentage', value: 'CAPITA_PERCENTAGE' },
-          { label: 'Latest Only', value: 'LATEST_ONLY' },
-          { label: 'Daily New Case', value: 'DAILY_NEW_CASE' },
-          { label: 'Death Case', value: 'DEATH_CASE' }
-        ],
-        selected_analyze_opt :{
-          'CAPITA_PERCENTAGE': 'FALSE',
-          'LATEST_ONLY': 'FALSE',
-          'DAILY_NEW_CASE': 'FALSE',
-          'DEATH_CASE': 'FALSE'
-        },
-        querying_territory: {},
-        selected_territory: {},
-        selected_capita: '1000',
-        provided_countries: [],
-        provided_states: [],
-        provided_counties: [],
-        displayed_countries: {},
-        displayed_states: {},
-        displayed_counties: {},
-        loading_chart_data: false
-    }
+  constructor (props){
+    super(props)
+    console.log('COMPONENT CONSTRUCTED ', this.props)
+    this.state = {
+      chart_data: [],
+      analyze_opt : [
+        { label: 'Capita Percentage', value: 'CAPITA_PERCENTAGE' },
+        { label: 'Latest Only', value: 'LATEST_ONLY' },
+        { label: 'Daily New Case', value: 'DAILY_NEW_CASE' }
+      ],
+      selected_analyze_opt :{
+        'CAPITA_PERCENTAGE': 'FALSE',
+        'LATEST_ONLY': 'FALSE',
+        'DAILY_NEW_CASE': 'FALSE'
+      },
+      querying_territory: {},
+      selected_territory: {},
+      selected_capita: '1000',
+      provided_countries: [],
+      provided_states: [],
+      provided_counties: [],
+      displayed_countries: {},
+      displayed_states: {},
+      displayed_counties: {},
+      loading_chart_data: false
+  }}
+
+  clear_state =() => {
+    this.setState({
+      chart_data: [],
+      analyze_opt : [
+        { label: 'Capita Percentage', value: 'CAPITA_PERCENTAGE' },
+        { label: 'Latest Only', value: 'LATEST_ONLY' },
+        { label: 'Daily New Case', value: 'DAILY_NEW_CASE' }
+      ],
+      selected_analyze_opt :{
+        'CAPITA_PERCENTAGE': 'FALSE',
+        'LATEST_ONLY': 'FALSE',
+        'DAILY_NEW_CASE': 'FALSE'
+      },
+      querying_territory: {},
+      selected_territory: {},
+      selected_capita: '1000',
+      provided_countries: [],
+      provided_states: [],
+      provided_counties: [],
+      displayed_countries: {},
+      displayed_states: {},
+      displayed_counties: {},
+      loading_chart_data: false
+  })
+  }
 
     REMOTE_HOST_URL = 'https://covid19-tracking-api.herokuapp.com/api'
     ANALYZE_EP = '/case-analyze'
@@ -42,16 +69,24 @@ export default class DailyCaseView extends PureComponent {
     STATE = '/state'
     COUNTY = '/county'
     TER_PROPERTY = ['territory_id', 'territory_type', 'territory_capita']
-    TER_PROPERTY_UI = ['territory_id', 'territory_type', 'territory_capita']
+    TER_PROPERTY_UI = ['territory_id', 'territory_type', 'territory_capita', 'name']
 
-    componentDidMount(){
+    componentDidMount = () => {
+      console.log('COMPONENT LOADED', this.props)
       this.load_provided_countries()
       this.load_chart_data()
     }
 
+    get_selected_analyze_opt = ()=>{
+      console.log(this.props)
+      let p = this.state.selected_analyze_opt
+      p['DEATH_CASE'] = this.props.medica === 'DEATH' ? 'TRUE' : 'FALSE'
+      return p
+    }
+
     load_provided_countries = () => {
       axios.get( this.REMOTE_HOST_URL + this.COUNTRY, {
-        params: this.state.selected_analyze_opt
+        params: this.get_selected_analyze_opt()
       }).then(res => {
         console.log('Countries preloaded: ', res.data)
         this.setState({ provided_countries: res.data })
@@ -59,7 +94,7 @@ export default class DailyCaseView extends PureComponent {
     } 
 
     get_analyze_params = () => {
-      let p = this.state.selected_analyze_opt
+      let p = this.get_selected_analyze_opt()
       for (let tp of this.TER_PROPERTY) {
         p[tp] = this.state.querying_territory ? this.state.querying_territory[tp]: []
       }
@@ -68,20 +103,10 @@ export default class DailyCaseView extends PureComponent {
     }
 
     get_presentable_querrying_ter = () => {
-      let p = {}
       let pq = []
-
-      for (let tp of this.TER_PROPERTY_UI) {
-        p[tp] = this.state.querying_territory ? this.state.querying_territory[tp]: []
-      }
-
-      if (p['territory_id']) {
-        for (let i= 0; i < p['territory_id'].length; i++){
-          let temp = {}
-          for (let tp of this.TER_PROPERTY_UI) {
-            temp[tp] = p[tp][i]
-          }
-          pq.push(temp)
+      if (this.state.querying_territory['territory_id']) {
+        for (let i= 0; i < this.state.querying_territory['territory_id'].length; i++){
+          pq.push(this.create_obj_from_ter_ui_index(i, this.state.querying_territory))
         }
       }
       console.log('Presentable querrying ter: ', pq)
@@ -115,16 +140,15 @@ export default class DailyCaseView extends PureComponent {
         selected_analyze_opt :{
           'CAPITA_PERCENTAGE': 'FALSE',
           'LATEST_ONLY': 'FALSE',
-          'DAILY_NEW_CASE': 'FALSE',
-          'DEATH_CASE': 'FALSE'
+          'DAILY_NEW_CASE': 'FALSE'
         }
       })
       for (let c of checked_values) {
         new_aso[c] = 'TRUE'
       }
-      console.log(new_aso)
+      console.log('New select analyze opt: ', new_aso)
       this.setState({
-        analyze_selected_options: new_aso
+        selected_analyze_opt: new_aso
       })
       this.load_chart_data()
     }
@@ -132,7 +156,7 @@ export default class DailyCaseView extends PureComponent {
     on_select_country = (sel_country) => {
       console.log('selected country',sel_country)
       this.update_selected_territory(sel_country, 'COUNTRY')
-      const p = this.state.selected_analyze_opt
+      const p = this.get_selected_analyze_opt()
       p.country_id = sel_country
 
       console.log('Select Country PARAMS ', p)
@@ -180,7 +204,7 @@ export default class DailyCaseView extends PureComponent {
 
     on_select_state = (sel_state) => {
       this.update_selected_territory(sel_state, 'STATE')
-      const p = this.state.selected_analyze_opt
+      const p = this.get_selected_analyze_opt()
       p['state_id'] = sel_state
 
       console.log('Select State PARAMS ', p)
@@ -272,27 +296,74 @@ export default class DailyCaseView extends PureComponent {
         )
       } else {
         return (
-          <LineChart
-            width={1300}
-            height={800}
-            data={this.state.chart_data}
-            margin={{
-              top: 50, right: 50, left: 100, bottom: 20,
-            }}
-          >
-            <CartesianGrid strokeDasharray='3 3' />
-            <XAxis dataKey='name' />
-            <YAxis />
-            <Tooltip />
-            {
-              this.get_presentable_querrying_ter().map (ter => (
-                <Line type='monotone' dataKey={ter.territory_type+ " " + ter.name} stroke='#8884d8' activeDot={{ r: 8 }} />
-              ))
-            }
-            <Legend />
-          </LineChart>
+          <ResponsiveContainer width= '100%' aspect= {4.0/3.0} minHeight= '300px'>
+            <LineChart
+              data={this.state.chart_data}
+              margin={50}
+            >
+              <CartesianGrid strokeDasharray='3 3' />
+              <XAxis dataKey='name' />
+              <YAxis />
+              <Tooltip />
+              {
+                this.get_presentable_querrying_ter().map (ter => (
+                  <Line type='monotone' dataKey={ter.territory_type+ " " + ter.name} stroke='#8884d8' activeDot={{ r: 8 }} />
+                ))
+              }
+              <Legend />
+            </LineChart>
+          </ResponsiveContainer>
         )
       }
+    }
+
+    get_info_from_btn = (e) => {
+      if (e.target.id) {
+        let arr = e.target.id.split(' ')
+        console.log('Editing ', arr)
+        return arr
+      }
+    }
+
+    find_querrying_item = (id, type) => {
+      if (this.state.querying_territory['territory_id']) {
+        for (let i = 0; i < this.state.querying_territory['territory_id'].length; i++) {
+          if (this.state.querying_territory['territory_id'][i] === id && this.state.querying_territory['territory_type'][i] === type){
+            return this.create_obj_from_ter_ui_index(i, this.state.querying_territory)
+          }
+        }
+      }
+    }
+
+    create_obj_from_ter_ui_index = (i, querying_territory) => {
+      let temp = {}
+      for (let tp of this.TER_PROPERTY_UI) {
+        temp[tp] = querying_territory[tp][i]
+      }
+      return temp
+    }
+
+    delete_querrying_ter = (ter) =>{
+      let qt = {}
+      console.log('Deleting ', ter)
+      for (let t of this.TER_PROPERTY_UI){
+        let temp = this.state.querying_territory[t]
+        console.log('index ', temp.indexOf(ter[t]))
+        temp.splice( temp.indexOf(ter[t]),1 )
+        qt[t] = temp
+      }
+      console.log("New querrying: ", qt)
+      this.setState({
+        querying_territory: qt
+      })
+    }
+
+    delete_querrying_ter_ui =(e)=>{
+      let id = this.get_info_from_btn(e)[0]
+      let type = this.get_info_from_btn(e)[1]
+
+      let ter = this.find_querrying_item(id, type)
+      this.delete_querrying_ter(ter)
     }
 
   render() {
@@ -305,84 +376,100 @@ export default class DailyCaseView extends PureComponent {
               minHeight: 280,
             }}
           >
-            Querrying territory:
-            <List
-              itemLayout="horizontal"
-              dataSource={this.get_presentable_querrying_ter()}
-              renderItem={item => (
-                <List.Item>
-                  <List.Item.Meta
-                    title={item.name}
-                    description = {item.territory_type + ". Capita: " + item.territory_capita}
-                  />
-                </List.Item>
-              )}
-            />
-            Country: 
-            <Select
-              showSearch
-              style={{ width: 200 }}
-              placeholder="Select a country"
-              optionFilterProp="children"
-              onChange={this.on_select_country}
-              value = {this.state.displayed_countries['name']}
-              filterOption={(input, option) =>
-                option.children.toLowerCase().indexOf(input.toLowerCase()) >= 0
-              }
-            >
-              {
-                this.state.provided_countries.map(country => (
-                  <Option value= {country._id}>{country.name}</Option>
-                ))
-              }
-            </Select>
-            
-            State: 
-            <Select
-              showSearch
-              style={{ width: 200 }}
-              placeholder="Select a state"
-              optionFilterProp="children"
-              onChange={this.on_select_state}
-              value = {this.state.displayed_states['name']}
-              filterOption={(input, option) =>
-                option.children.toLowerCase().indexOf(input.toLowerCase()) >= 0
-              }
-            >
-              {
-                this.state.provided_states.map(state => (
-                  <Option value= {state._id}>{state.name}</Option>
-                ))
-              }
-            </Select>
-            
-            County: 
-            <Select
-              showSearch
-              style={{ width: 200 }}
-              placeholder="Select a county"
-              optionFilterProp="children"
-              onChange={this.on_select_county}
-              value = {this.state.displayed_counties['name']}
-              filterOption={(input, option) =>
-                option.children.toLowerCase().indexOf(input.toLowerCase()) >= 0
-              }
-            >
-              {
-                this.state.provided_counties.map(county => (
-                  <Option value= {county._id}>{county.name}</Option>
-                ))
-              }
-            </Select>
-
-            <Input size="large" defaultValue = "1000" placeholder="Input capita" prefix={<UserOutlined />} onChange = {this.on_input_caputa}/>
-            <AntdToolTip title="search">
-              <Button type="primary" shape="circle" icon={<SearchOutlined />} onClick = {this.add_new_querrying_ter}/>
-            </AntdToolTip>
-            <br/>
-            <Checkbox.Group options={this.state.analyze_opt} onChange={this.on_select_analyze_opt} />
-            <br/>
-            {this.load_chart_ui()}
+            <Row class = "territory" gutter={[{ xs: 8, sm: 16, md: 24, lg: 32 }, { xs: 8, sm: 16, md: 24, lg: 32 }]} align= "middle">
+              <Col span= {7}>
+                Querrying territory:
+                <List
+                  itemLayout="horizontal"
+                  dataSource={this.get_presentable_querrying_ter()}
+                  renderItem={item => (
+                    <List.Item>
+                      <List.Item.Meta
+                        title={item.name}
+                        description = {item.territory_type + ". Capita: " + item.territory_capita}
+                      />
+                      <Button id = {item.territory_id + " " + item.territory_type} onClick = {this.delete_querrying_ter_ui}><DeleteFilled/></Button>
+                    </List.Item>
+                  )}
+                />
+              </Col>
+              <Col span= {15}>
+                Select new territory: 
+                <Row class = 'selected-territory' gutter={[{ xs: 4, sm: 8, md: 12, lg: 16 },{ xs: 4, sm: 8, md: 12, lg: 16 }]}>
+                  <Col class = 'selected-col'>
+                    <Select
+                      showSearch
+                      style={{ width: 200 }}
+                      placeholder="Select a country"
+                      optionFilterProp="children"
+                      onChange={this.on_select_country}
+                      value = {this.state.displayed_countries['name']}
+                      filterOption={(input, option) =>
+                        option.children.toLowerCase().indexOf(input.toLowerCase()) >= 0
+                      }
+                    >
+                      {
+                        this.state.provided_countries.map(country => (
+                          <Option value= {country._id}>{country.name}</Option>
+                        ))
+                      }
+                    </Select>
+                  </Col>
+                  <Col class = 'selected-col'>
+                    <Select
+                      showSearch
+                      style={{ width: 200 }}
+                      placeholder="Select a state"
+                      optionFilterProp="children"
+                      onChange={this.on_select_state}
+                      value = {this.state.displayed_states['name']}
+                      filterOption={(input, option) =>
+                        option.children.toLowerCase().indexOf(input.toLowerCase()) >= 0
+                      }
+                    >
+                      {
+                        this.state.provided_states.map(state => (
+                          <Option value= {state._id}>{state.name}</Option>
+                        ))
+                      }
+                    </Select>
+                  </Col>
+                  <Col class = 'selected-col'>
+                    <Select
+                      showSearch
+                      style={{ width: 200 }}
+                      placeholder="Select a county"
+                      optionFilterProp="children"
+                      onChange={this.on_select_county}
+                      value = {this.state.displayed_counties['name']}
+                      filterOption={(input, option) =>
+                        option.children.toLowerCase().indexOf(input.toLowerCase()) >= 0
+                      }
+                    >
+                      {
+                        this.state.provided_counties.map(county => (
+                          <Option value= {county._id}>{county.name}</Option>
+                        ))
+                      }
+                    </Select>
+                  </Col>
+                  <Col class = 'selected-col'>
+                    <Input defaultValue = "1000" placeholder="Input capita" prefix={<UserOutlined />} onChange = {this.on_input_caputa}/>
+                  </Col>
+                  <Col class = 'selected-col'>
+                    <AntdToolTip title="search">
+                      <Button type="primary" shape="circle" icon={<SearchOutlined />} onClick = {this.add_new_querrying_ter}/>
+                    </AntdToolTip>
+                  </Col>
+                </Row>
+                <Row class= "analyze-option">
+                  <Checkbox.Group options={this.state.analyze_opt} onChange={this.on_select_analyze_opt} />   
+                </Row>
+              </Col>
+            </Row>
+            <Row class= "chart">
+              {this.load_chart_ui()}
+            </Row>
       </Content>
     ) 
   }
